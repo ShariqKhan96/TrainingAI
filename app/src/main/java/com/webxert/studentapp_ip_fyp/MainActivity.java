@@ -4,8 +4,8 @@ import android.app.ProgressDialog;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
 
@@ -16,11 +16,9 @@ import com.microsoft.projectoxford.face.contract.CreatePersonResult;
 import com.microsoft.projectoxford.face.contract.Person;
 import com.microsoft.projectoxford.face.contract.PersonGroup;
 import com.microsoft.projectoxford.face.contract.TrainingStatus;
-import com.microsoft.projectoxford.face.rest.ClientException;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 
 public class MainActivity extends AppCompatActivity {
@@ -47,7 +45,9 @@ public class MainActivity extends AppCompatActivity {
             Log.e("personId", String.valueOf(createPersonResult.personId));
             if (createPersonResult != null) {
 
+                Log.e(MainActivity.class.getSimpleName(), "Person id is " + createPersonResult.personId);
                 new DetectAndRegister(createPersonResult).execute();
+
             }
         }
 
@@ -60,7 +60,7 @@ public class MainActivity extends AppCompatActivity {
         protected CreatePersonResult doInBackground(Void... voids) {
             try {
                 publishProgress("Creating person in group");
-                dialog.dismiss();
+                //dialog.dismiss();
                 return faceServiceRestClient.createPerson("xyz", "Zayn", null);
 
             } catch (Exception e) {
@@ -96,6 +96,7 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
 
+
             return true;
         }
 
@@ -106,6 +107,8 @@ public class MainActivity extends AppCompatActivity {
                 getPersonResult.execute();
             } catch (Exception e) {
                 e.printStackTrace();
+                Log.e("UpdatingError", e.getMessage());
+
             }
         }
     };
@@ -167,26 +170,32 @@ public class MainActivity extends AppCompatActivity {
                     ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
                     bitmap.compress(Bitmap.CompressFormat.JPEG, 100, byteArrayOutputStream);
                     byteArrayInputStream = new ByteArrayInputStream(byteArrayOutputStream.toByteArray());
+                    publishProgress("Training....");
+                    try {
 
-                    //for loop to give 3 pictures
-
-                    Thread thread = new Thread(new Runnable() {
-                        @Override
-                        public void run() {
-                            try {
-                                AddPersistedFaceResult faceResult = faceServiceRestClient.addPersonFace("xyz", createPersonResult.personId, byteArrayInputStream, null, null);
-                                if (faceResult != null) {
-                                    Log.e("persistedFaceId", String.valueOf(faceResult.persistedFaceId));
-
-                                }
-                            } catch (Exception e) {
-
-                                Log.e("ImageTrainingException", e.getMessage());
-                            }
+                        AddPersistedFaceResult faceResult = faceServiceRestClient.addPersonFace("xyz", createPersonResult.personId, byteArrayInputStream, null, null);
+                        if (faceResult != null) {
+                            publishProgress("Training....");
+                            Log.e("persistedFaceId", String.valueOf(faceResult.persistedFaceId));
 
                         }
-                    });
-                    thread.start();
+                    } catch (Exception e) {
+
+                        publishProgress(e.getLocalizedMessage());
+                        Log.e("ImageTrainingException", e.getMessage());
+                    }
+
+                    //for loop to give 3 pictures
+//
+//                    Thread thread = new Thread(new Runnable() {
+//                        @Override
+//                        public void run() {
+//
+//                            }
+//
+//                        }
+//                    });
+//                    thread.start();
 
                     byteArrayOutputStream.close();
                     byteArrayInputStream.close();
@@ -202,6 +211,8 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Boolean bool) {
+            dialog.dismiss();
+
             if (bool)
                 new TrainPersonGroup().execute();
             else Log.e("TrainingResult", String.valueOf(bool));
@@ -210,14 +221,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-    final AsyncTask<Void,Void,Boolean> getPersonResult =  new AsyncTask<Void,Void,Boolean>(){
+    final AsyncTask<String, String, Boolean> getPersonResult = new AsyncTask<String, String, Boolean>() {
+
 
         @Override
-        protected Boolean doInBackground(Void... voids) {
+        protected void onProgressUpdate(String... values) {
+            super.onProgressUpdate(values);
+        }
+
+        @Override
+        protected void onPreExecute() {
+            dialog.show();
+        }
+
+        @Override
+        protected Boolean doInBackground(String... voids) {
             try {
                 group = faceServiceRestClient.getPersonGroup("xyz");
+                publishProgress("GettingPersonResult");
             } catch (Exception e) {
                 e.printStackTrace();
+                publishProgress("Eception: " + e.getMessage());
+                Log.e("GettingpersonError", e.getMessage());
                 return false;
             }
 
@@ -226,6 +251,7 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         protected void onPostExecute(Boolean bool) {
+            dialog.dismiss();
             if (group != null) {
                 Log.e("personCreated", String.valueOf(bool));
                 if (bool) {
@@ -235,27 +261,49 @@ public class MainActivity extends AppCompatActivity {
         }
     };
 
-    private class TrainPersonGroup extends AsyncTask<Void, Void, Void> {
+    private class TrainPersonGroup extends AsyncTask<Void, String, Void> {
+
+
+        @Override
+        protected void onPreExecute() {
+            dialog.show();
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            dialog.dismiss();
+        }
+
+        @Override
+        protected void onProgressUpdate(String... values) {
+            dialog.setMessage(values[0]);
+        }
 
         @Override
         protected Void doInBackground(Void... voids) {
 
 
             try {
+                publishProgress("Fetching training status");
                 faceServiceRestClient.trainPersonGroup("xyz");
                 TrainingStatus trainingStatus = null;
 
                 while (true) {
                     trainingStatus = faceServiceRestClient.getPersonGroupTrainingStatus("xyz");
-                    if (trainingStatus.status != TrainingStatus.Status.Running)
+                    Log.e("TrainingStatus", trainingStatus.status + " ");
+                    if (trainingStatus.status != TrainingStatus.Status.Running) {
+                        publishProgress("Current training status is " + trainingStatus.status);
                         break;
+
+                    }
+
                     Thread.sleep(1000);
                 }
                 Log.e("TrainingAI", "Training Completed !");
 
 
             } catch (Exception e) {
-                Log.d("Training Error",e.getMessage());
+                Log.d("Training Error", e.getMessage());
                 e.printStackTrace();
             }
 

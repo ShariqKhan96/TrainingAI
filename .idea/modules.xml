@@ -2,7 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/TrainingAI.iml" filepath="$PROJECT_DIR$/TrainingAI.iml" />
+      <module fileurl="file://$PROJECT_DIR$/StudentApp_IP_FYP.iml" filepath="$PROJECT_DIR$/StudentApp_IP_FYP.iml" />
+      <module fileurl="file://D:\projects\s\StudentApp_IP_FYP\TrainingAI.iml" filepath="D:\projects\s\StudentApp_IP_FYP\TrainingAI.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>
